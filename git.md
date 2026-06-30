@@ -4,5 +4,5 @@ git config --global user.name "jackpatcher"
 git config --global user.email jack.patcher.social@gmail.com
 
 git add .
-git commit -m "test"
+git commit -m "XIN"
 git push -u origin main

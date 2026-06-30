@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shrimp Pond - ระบบบ่อกุ้งอัจฉริยะ</title>
+    <!-- ใช้ Tailwind CSS สำหรับโครงสร้างและการตกแต่ง -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- ใช้ฟอนต์ Sarabun เพื่อความลื่นไหลอ่านง่าย -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- ไอคอน FontAwesome สำหรับเพิ่มความสวยงาม -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        body, html, * {
+            font-family: 'Sarabun', sans-serif !important;
+        }
+        body {
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%) !important;
+        }
+        /* เพิ่มความลื่นไหลให้แถบวิ่งเวลาค่าเปลี่ยน */
+        .progress-smooth {
+            transition: width 0.2s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start pb-12">
+
+    <!-- ส่วนหัวและโลโก้หน่วยงาน -->
+    <div class="w-full max-w-5xl px-4 mt-8">
+        <div class="flex flex-row items-center justify-between bg-white p-4 rounded-2xl shadow-sm mb-6">
+            <div class="flex items-center gap-4">
+                <img id="school-logo" src="" alt="School Logo" class="w-16 h-16 object-contain rounded-full border border-gray-100 shadow-sm" />
+                <div class="h-10 w-px bg-gray-200"></div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold text-gray-500 uppercase tracking-wider">STSS Project</span>
+                    <span class="text-xs text-gray-400">เทคโนโลยีปัญญาประดิษฐ์เพื่อชุมชน</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <span class="text-xs text-gray-400 block">สนับสนุนโดย</span>
+                    <span class="text-xs font-bold text-blue-600">สำนักงานส่งเสริมเศรษฐกิจดิจิทัล</span>
+                </div>
+                <img src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png" alt="Depa Logo" class="w-14 h-14 object-contain p-1 rounded-xl bg-gray-50 border border-gray-100" />
+            </div>
+        </div>
+    </div>
+
+    <!-- ส่วนแสดงหัวข้อระบบ -->
+    <div class="text-center px-4 mb-8">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold mb-3 shadow-sm">
+            <i class="fas fa-microchip animate-pulse"></i> AI & IoT Smart Farming
+        </div>
+        <h1 class="text-3xl md:text-4xl font-bold text-cyan-900 tracking-tight">
+            Smart Shrimp Pond <span class="text-blue-600">ระบบบ่อกุ้งอัจฉริยะ</span>
+        </h1>
+        <p class="text-gray-600 mt-2 max-w-xl mx-auto text-sm md:text-base">
+            ระบบปัญญาประดิษฐ์ตรวจจับและคัดแยก <span class="text-red-500 font-bold underline">ปลาหมอคางดำ</span> แบบ Real-time เพื่อปกป้องผลผลิตและเซฟระบบนิเวศในบ่อกุ้งของคุณ
+        </p>
+    </div>
+
+    <!-- ส่วนจัดการกล้องและผลลัพธ์ -->
+    <div class="w-full max-w-5xl px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- ฝั่งซ้าย-กลาง: กล้อง Webcam -->
+        <div class="md:col-span-2 flex flex-col bg-white rounded-2xl shadow-xl p-4 border border-blue-50">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <span class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                    <i class="fas fa-video text-gray-500"></i> กล้องตรวจจับใต้น้ำ / รางคัดแยก
+                </span>
+                <span class="text-xs text-gray-400">ความละเอียด 300x300 px</span>
+            </div>
+            
+            <!-- กรอบใส่กล้อง -->
+            <div class="relative bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] shadow-inner border border-gray-800">
+                <div id="webcam-container" class="w-full h-full flex justify-center items-center">
+                    <div class="text-center text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-3xl mb-2 text-blue-400"></i>
+                        <p class="text-sm">กำลังเชื่อมต่อกล้องและโมเดล AI...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- บาร์แสดงสถานะด้านล่างกล้อง -->
+            <div class="grid grid-cols-3 gap-2 mt-4 text-center text-xs text-gray-500">
+                <div class="bg-gray-50 p-2 rounded-lg border border-gray-100">
+                    <span class="block text-gray-400">หน่วงเวลาตรวจสอบ</span>
+                    <strong class="text-gray-700 text-sm" id="delay-display">3 วินาที</strong>
+                </div>
+                <div class="bg-gray-50 p-2 rounded-lg border border-gray-100">
+                    <span class="block text-gray-400">ความแม่นยำส่งคำสั่ง</span>
+                    <strong class="text-gray-700 text-sm">> 75%</strong>
+                </div>
+                <div class="bg-gray-50 p-2 rounded-lg border border-gray-100">
+                    <span class="block text-gray-400">ระบบสั่งการ</span>
+                    <strong class="text-emerald-600 text-sm"><i class="fas fa-check-circle"></i> Prototype</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- ฝั่งขวา: การประมวลผลของ AI และแจ้งเตือน -->
+        <div class="flex flex-col gap-4">
+            
+            <!-- การวิเคราะห์ของ AI -->
+            <div class="bg-white rounded-2xl shadow-xl p-5 border border-blue-50 flex-1">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i class="fas fa-brain text-purple-500"></i> การวิเคราะห์จาก AI
+                </h2>
+                
+                <!-- คอนเทนเนอร์แสดงความแม่นยำ -->
+                <div id="label-container" class="space-y-4"></div>
+            </div>
+
+            <!-- กล่องแจ้งเตือนภัยคุกคาม -->
+            <div id="status-card" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 transition-all duration-300">
+                <div class="flex items-start gap-3">
+                    <div id="status-icon-box" class="p-3 bg-emerald-500 text-white rounded-xl shadow-md">
+                        <i id="status-icon" class="fas fa-shield-alt text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 id="status-title" class="font-bold text-emerald-800 text-base">บ่อกุ้งปลอดภัย</h3>
+                        <p id="status-desc" class="text-xs text-emerald-600 mt-0.5">ไม่พบสิ่งเจือปนหรือปลาหมอคางดำในระบบปัจจุบัน</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ลิขสิทธิ์ด้านล่าง -->
+    <div class="mt-8 text-center text-xs text-gray-400">
+        &copy; 2026 Smart Shrimp Pond - โครงการนวัตกรรมบ่อกุ้งอัจฉริยะ โรงเรียน STSS
+    </div>
+
+    <!-- โหลดไลบรารี TensorFlow และ Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+     <script src="libs/socket.io.min.js"></script>
+    <script type="text/javascript">
+
+        const socket = io();
+      
+        const logo = "https://www.stss.ac.th/img/stss_logo.png";
+        const URL = "https://teachablemachine.withgoogle.com/models/ouOznJuxG/"; 
+        
+        const sec = 3; 
+        let model, webcam, labelContainer, maxPredictions;
+        let lastSend = 0;
+       
+
+        document.getElementById('delay-display').innerText = sec + " วินาที";
+        document.getElementById('school-logo').src = logo;
+        
+        window.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+            
+            const flip = true;
+            webcam = new tmImage.Webcam(300, 300, flip);
+            await webcam.setup();
+            await webcam.play();
+            
+            window.requestAnimationFrame(loop);
+            
+            document.getElementById("webcam-container").innerHTML = "";
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = "";
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                const wrapper = document.createElement("div");
+                wrapper.className = "p-3 rounded-xl border border-gray-100 bg-gray-50 shadow-sm";
+                
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "flex justify-between items-center text-sm font-semibold text-gray-700 mb-1";
+                
+                const titleSpan = document.createElement("span");
+                titleSpan.innerText = i === 0 ? "⚠️ พบปลาหมอคางดำ (Blackchin Tilapia)" : "✨ สภาวะปกติ / พบกุ้ง (Normal)";
+                
+                const scoreSpan = document.createElement("span");
+                scoreSpan.id = `score-${i}`;
+                scoreSpan.className = i === 0 ? "text-red-600 font-bold" : "text-green-600 font-bold";
+                scoreSpan.innerText = "0%";
+                
+                infoDiv.appendChild(titleSpan);
+                infoDiv.appendChild(scoreSpan);
+                
+                const barOuter = document.createElement("div");
+                barOuter.className = "w-full bg-gray-200 h-4 rounded-full overflow-hidden shadow-inner relative";
+                
+                const barInner = document.createElement("div");
+                barInner.id = `bar-${i}`;
+                
+                // แก้ไขตรงนี้: ใช้คลาส bg-green-500 เพื่อแก้ปัญหาแถบสีไม่ขึ้นในบางบราวเซอร์
+                barInner.className = i === 0 
+                    ? "h-full rounded-full progress-smooth bg-red-500" 
+                    : "h-full rounded-full progress-smooth bg-green-500";
+                barInner.style.width = "0%";
+                
+                barOuter.appendChild(barInner);
+                wrapper.appendChild(infoDiv);
+                wrapper.appendChild(barOuter);
+                labelContainer.appendChild(wrapper);
+            }
+        }
+
+        async function loop() {
+            webcam.update();
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                const prob = prediction[i].probability; 
+                const percentage = (prob * 100).toFixed(0) + "%"; // แปลงค่าเป็นเปอร์เซ็นต์ (เช่น 73%)
+
+                // 1. อัปเดตตัวเลขแสดงผลข้างบนแถบให้เป็นรูปแบบคลาสบวกด้วย % เช่น (Class 2: 73%)
+                document.getElementById(`score-${i}`).innerText = prediction[i].className + ": " + percentage;
+                
+                // 2. ขยายสไตล์ความกว้างของแถบสีตามเปอร์เซ็นต์จริง
+                document.getElementById(`bar-${i}`).style.width = percentage;
+            }
+
+            // จัดการเงื่อนไขแจ้งเตือนภัย
+            const statusCard = document.getElementById('status-card');
+            const statusIconBox = document.getElementById('status-icon-box');
+            const statusIcon = document.getElementById('status-icon');
+            const statusTitle = document.getElementById('status-title');
+            const statusDesc = document.getElementById('status-desc');
+
+            if (prediction[0].probability > 0.75) {
+                statusCard.className = "bg-red-50 border-red-200 border rounded-2xl p-4 transition-all duration-300 animate-pulse";
+                statusIconBox.className = "p-3 bg-red-500 text-white rounded-xl shadow-md";
+                statusIcon.className = "fas fa-exclamation-triangle text-xl";
+                statusTitle.className = "font-bold text-red-800 text-base";
+                statusTitle.innerText = "เตือนภัย! พบปลาหมอคางดำ";
+                statusDesc.className = "text-xs text-red-600 mt-0.5";
+                statusDesc.innerText = "ระบบ AI ตรวจพบปลาหมอคางดำ กำลังส่งสัญญาณเตือนและสั่งการประตูกั้นคัดแยก!";
+                // sendTelegram('⚠️ พบปลาหมอคางดำ!');
+                sendToPython(90);
+                
+            } else if (prediction[1].probability > 0.75) {
+                statusCard.className = "bg-emerald-50 border border-emerald-200 rounded-2xl p-4 transition-all duration-300";
+                statusIconBox.className = "p-3 bg-emerald-500 text-white rounded-xl shadow-md";
+                statusIcon.className = "fas fa-shield-alt text-xl";
+                statusTitle.className = "font-bold text-emerald-800 text-base";
+                statusTitle.innerText = "บ่อกุ้งปลอดภัย";
+                statusDesc.className = "text-xs text-emerald-600 mt-0.5";
+                statusDesc.innerText = "ไม่พบสิ่งเจือปนหรือปลาหมอคางดำในระบบปัจจุบัน";
+                sendToPython(0);
+            }
+        }
+
+// ค้นหาฟังก์ชัน sendToPython เดิมที่อยู่ท้ายโค้ด แล้วเปลี่ยนเป็นชุดนี้ครับ
+function sendToPython(action) {
+    const now = Date.now();
+    const COOLDOWN_MS = sec * 1000; // ใช้ค่า sec (3 วินาที) ที่ประกาศไว้ด้านบน
+
+    // ถ้าเวลาปัจจุบัน หักลบกับ เวลาที่ส่งไปล่าสุด แล้วยังไม่เกิน 3 วินาที ให้ข้ามไป (ไม่ส่งซ้ำ)
+    if (now - lastSend < COOLDOWN_MS) {
+        return; 
+    }
+
+    // ทำการส่งข้อมูลผ่าน Socket เมื่อครบกำหนดเวลา
+    console.log("Sending command to Python:", action);
+    socket.emit("watergatepy", { act: action });
+
+    // อัปเดตเวลาที่ส่งล่าสุด
+    lastSend = now;
+}
+    </script>
+</body>
+</html>
