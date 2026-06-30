@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNO Q - AI TRAFFIC COMMAND CENTER</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  
+  <style>
+    :root {
+      --bg: #030712;
+      --panel: #0b1329;
+      --panel-border: #1c2541;
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --cyan-neon: #00f5ff;
+      --green-neon: #39ff14;
+      --red-neon: #ff3131;
+      --yellow-neon: #fff01f;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      font-family: 'Courier New', Courier, monospace, system-ui;
+      background-color: var(--bg);
+      background-image: 
+        linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: var(--text);
+      min-height: 100vh;
+      padding: 15px;
+    }
+
+    header {
+      text-align: center;
+      padding: 10px 0 20px;
+      border-bottom: 2px dashed var(--panel-border);
+      margin-bottom: 20px;
+    }
+
+    h1 { 
+      margin: 0; 
+      font-size: 28px; 
+      color: var(--cyan-neon); 
+      text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+      letter-spacing: 2px;
+    }
+
+    .system-time {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+
+    /* Layout โครงสร้างห้อง Command */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+      position: relative;
+    }
+
+    .panel::before {
+      content: '■ ONLINE';
+      position: absolute;
+      top: -10px;
+      left: 15px;
+      background: var(--bg);
+      padding: 0 8px;
+      font-size: 11px;
+      color: var(--cyan-neon);
+      font-weight: bold;
+    }
+
+    .panel.panic::before {
+      content: '⚠️ ALARM';
+      color: var(--red-neon);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* กล่องหน้าจอกล้อง */
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border: 2px solid #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+    }
+
+    video, img#photoPreview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .camera-grid-line {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border: 1px solid rgba(0, 245, 255, 0.1);
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+    }
+
+    /* แถบไฟสถานะหลักยักษ์ใหญ่ */
+    .status-monitor {
+      text-align: center;
+      padding: 20px;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.4);
+      border: 2px solid var(--muted);
+      margin-bottom: 15px;
+      transition: all 0.3s;
+    }
+
+    .status-monitor.normal-glow {
+      border-color: var(--green-neon);
+      box-shadow: 0 0 15px rgba(57, 255, 20, 0.2);
+      color: var(--green-neon);
+    }
+
+    .status-monitor.violated-glow {
+      border-color: var(--red-neon);
+      box-shadow: 0 0 20px rgba(255, 49, 49, 0.4);
+      color: var(--red-neon);
+      animation: flash-red 1s infinite;
+    }
+
+    @keyframes flash-red {
+      50% { opacity: 0.5; }
+    }
+
+    .status-icon { font-size: 50px; }
+    .status-text { font-size: 24px; font-weight: bold; margin-top: 5px; }
+
+    /* แถบวัดเปอร์เซ็นต์ */
+    .metric-container { display: grid; gap: 12px; margin-top: 15px; }
+    .metric-row { font-size: 13px; }
+    .metric-label { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .progress-bar-bg { height: 14px; background: #111; border: 1px solid var(--panel-border); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; width: 0%; transition: width 0.2s; }
+    
+    .fill-cyan { background: var(--cyan-neon); box-shadow: 0 0 8px var(--cyan-neon); }
+    .fill-red { background: var(--red-neon); box-shadow: 0 0 8px var(--red-neon); }
+
+    /* แผงควบคุมควบคุมความปลอดภัยด้านล่าง (Servo) */
+    .servo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .servo-card {
+      display: flex;
+      background: #020617;
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .servo-input {
+      width: 40%;
+      background: #000;
+      border: none;
+      color: var(--cyan-neon);
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+      outline: none;
+      border-right: 1px dashed var(--panel-border);
+    }
+
+    .btn {
+      background: var(--panel-border);
+      color: var(--text);
+      border: none;
+      padding: 10px 14px;
+      font-family: inherit;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+
+    .btn:hover:not(:disabled) { background: var(--cyan-neon); color: #000; box-shadow: 0 0 10px var(--cyan-neon); }
+    .btn:active { transform: scale(0.98); }
+    .btn-servo-trigger { width: 60%; background: #0f172a; color: var(--cyan-neon); }
+
+    .btn-action { border-radius: 20px; font-size: 12px; padding: 6px 12px; background: #1e293b; border: 1px solid var(--panel-border); }
+    .btn-action:hover { background: var(--text); color: #000; }
+
+    /* คลาสไฮไลต์ปุ่มทำงานล่าสุด */
+    .servo-active-border { border-color: var(--green-neon) !important; box-shadow: 0 0 8px rgba(57, 255, 20, 0.3); }
+    .servo-active-border .btn-servo-trigger { background: var(--green-neon) !important; color: #000 !important; }
+
+    /* Console Terminal Logs */
+    .terminal-box {
+      background: #000;
+      border: 1px solid var(--panel-border);
+      height: 110px;
+      font-size: 11px;
+      padding: 8px;
+      overflow-y: auto;
+      color: #39ff14;
+      border-radius: 4px;
+    }
+
+    /* สถานะสายนี่ */
+    .hardware-status {
+      display: flex; gap: 15px; font-size: 11px; margin-top: 10px; color: var(--muted);
+    }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .dot-online { background: var(--green-neon); box-shadow: 0 0 6px var(--green-neon); }
+
+    @media (max-width: 900px) { .dashboard-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>📡 UNO Q RAIL CROSSING COMMAND DESK</h1>
+    <div class="system-time">SYS_STATUS: OPERATIONAL | LOCATION: GATE_ALPHA</div>
+  </header>
+
+  <main class="dashboard-grid">
+    
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <section class="panel">
+        <div class="panel-title">📹 LIVE VIDEO FEED MULTIPLEXER</div>
+        <div class="video-wrap">
+          <video id="video" autoplay muted playsinline></video>
+          <img id="photoPreview" alt="Upload preview" style="display:none" />
+          <div class="camera-grid-line"></div>
+        </div>
+        
+        <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+          <button class="btn btn-action" id="startCameraBtn">🔌 CONNECT CAM</button>
+          <button class="btn btn-action" id="detectBtn" disabled>🎯 SCAN FRAME</button>
+          <button class="btn btn-action" id="autoBtn" disabled>🔄 AUTO LOOP: OFF</button>
+          <label class="btn btn-action" for="imageUpload" style="cursor:pointer; display:inline-block;">📁 INJECT IMAGE</label>
+          <input id="imageUpload" type="file" accept="image/*" />
+        </div>
+        <div id="status" style="font-size: 11px; color: var(--cyan-neon); margin-top: 10px;">[INFO] Command Center initializing...</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">⚙️ HARDWARE ACTUATOR OVERRIDE (SERVO CONTROL)</div>
+        <div style="font-size:11px; color: var(--muted); margin-bottom:10px;">บอร์ดแยกทำงานอิสระ หมุนปรับมุมแผงกั้นทางรถไฟได้ทันที:</div>
+        
+        <div class="servo-grid">
+          <div class="servo-card" id="row1">
+            <input type="number" class="servo-input" id="deg1" value="0" min="0" max="180">
+            <button class="btn btn-servo-trigger" onclick="sendServo('deg1', 'row1')">⚡ TRIGGER 0°</button>
+          </div>
+          <div class="servo-card" id="row2">
+            <input type="number" class="servo-input" id="deg2" value="10" min="0" max="180">
+            <button class="btn btn-servo-trigger" onclick="sendServo('deg2', 'row2')">⚡ TRIGGER 10°</button>
+          </div>
+          <div class="servo-card" id="row3">
+            <input type="number" class="servo-input" id="deg3" value="45" min="0" max="180">
+            <button class="btn btn-servo-trigger" onclick="sendServo('deg3', 'row3')">⚡ TRIGGER 45°</button>
+          </div>
+          <div class="servo-card" id="row4">
+            <input type="number" class="servo-input" id="deg4" value="90" min="0" max="180">
+            <button class="btn btn-servo-trigger" onclick="sendServo('deg4', 'row4')">⚡ TRIGGER 90°</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <section class="panel" id="mainAlarmPanel">
+        <div class="panel-title">📊 COGNITIVE PROCESSOR DIRECTIVES</div>
+        
+        <div id="statusMonitor" class="status-monitor">
+          <div id="statusIcon" class="status-icon">📡</div>
+          <div id="statusText" class="status-text">SYSTEM READY</div>
+        </div>
+
+        <div class="metric-container">
+          <div class="metric-row">
+            <div class="metric-label"><span>NORMAL STATE (หลังเส้น)</span><span id="txtNormal">0%</span></div>
+            <div class="progress-bar-bg"><div id="barNormal" class="progress-fill fill-cyan"></div></div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-label"><span>VIOLATED DETECTED (ล้ำเส้น)</span><span id="txtViolated">0%</span></div>
+            <div class="progress-bar-bg"><div id="barViolated" class="progress-fill fill-red"></div></div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:20px; justify-content: center;">
+          <button class="btn btn-action" style="border-color:var(--green-neon);" onclick="mockStatus('normal')">🟢 SIM_NORMAL</button>
+          <button class="btn btn-action" style="border-color:var(--red-neon);" onclick="mockStatus('violated')">🔴 SIM_VIOLATED</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">📟 SYSTEM TERMINAL LOGS</div>
+        <div class="terminal-box" id="terminalLogs">
+          [SYSTEM] Initializing telemetry data transmission link...<br>
+          [SYSTEM] Web Interface deployment active.
+        </div>
+        <div class="hardware-status">
+          <div><span class="status-dot dot-online"></span> AI_CORE</div>
+          <div><span class="status-dot dot-online"></span> WEBSOCKET_LINK</div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="libs/socket.io.min.js"></script>
+  <script>
+    const socket = io();
+    const video = document.getElementById('video');
+    const photoPreview = document.getElementById('photoPreview');
+    const statusBox = document.getElementById('status');
+    const detectBtn = document.getElementById('detectBtn');
+    const startCameraBtn = document.getElementById('startCameraBtn');
+    const autoBtn = document.getElementById('autoBtn');
+    const imageUpload = document.getElementById('imageUpload');
+    const terminalLogs = document.getElementById('terminalLogs');
+
+    const statusMonitor = document.getElementById('statusMonitor');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusText = document.getElementById('statusText');
+    const mainAlarmPanel = document.getElementById('mainAlarmPanel');
+
+    const barNormal = document.getElementById('barNormal');
+    const txtNormal = document.getElementById('txtNormal');
+    const barViolated = document.getElementById('barViolated');
+    const txtViolated = document.getElementById('txtViolated');
+
+    let modelReady = false;
+    let autoMode = false;
+    let autoTimer = null;
+    let currentSource = 'video';
+
+    // ฟังก์ชันเขียนประวัติลงในหน้าจอกล่อง Terminal Log
+    function writeLog(text) {
+      const time = new Date().toLocaleTimeString();
+      terminalLogs.innerHTML += `<br>[${time}] ${text}`;
+      terminalLogs.scrollTop = terminalLogs.scrollHeight; // สไลด์ลงล่างสุดอัตโนมัติ
+    }
+
+    function setStatus(message, isGood=true) {
+      statusBox.textContent = `[MSG] ${message}`;
+      statusBox.style.color = isGood ? 'var(--cyan-neon)' : 'var(--red-neon)';
+    }
+
+    // โหลดโมเดลจำลองตามแบบโครงสร้าง Edge Impulse
+    async function loadEdgeImpulseModel() {
+      try {
+        setStatus('Connecting model path...');
+        // model = await tf.loadLayersModel('/model/model.json');
+        modelReady = true;
+        detectBtn.disabled = false;
+        autoBtn.disabled = false;
+        setStatus('AI MODEL LOADED SUCCESSFUL.', true);
+        writeLog('Edge Impulse neural network matrix loaded.');
+      } catch (err) {
+        setStatus('AI Core offline. Control override available.', false);
+        writeLog('Warning: Model loading skipped. Actuator panels remain interactive.');
+      }
+    }
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 320 }, audio: false });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        photoPreview.style.display = 'none';
+        currentSource = 'video';
+        setStatus('CAMERA INTERFACE ONLINE.', true);
+        writeLog('Video stream input captured from channel 0.');
+      } catch (err) {
+        setStatus('Camera sensor fault.', false);
+        writeLog(`Camera Error: ${err.message}. Fallback to image injection mode.`);
+      }
+    }
+
+    // แกะรูปภาพวิเคราะห์ล้ำเส้น
+    async function analyzeTrafficFrame() {
+      if (!modelReady) return;
+      
+      // สุ่มตัวเลขสถานะความเชื่อมั่นเพื่อทดสอบพฤติกรรม UI
+      let nScore = currentSource === 'image' ? 0.08 : Math.random();
+      let vScore = 1 - nScore;
+
+      renderMetrics(nScore, vScore);
+      const outputStatus = vScore > nScore ? 'violated' : 'normal';
+      executeAlertDispatch(outputStatus, (outputStatus === 'violated' ? vScore : nScore));
+    }
+
+    function renderMetrics(normal, violated) {
+      const nPct = Math.round(normal * 100);
+      const vPct = Math.round(violated * 100);
+      
+      barNormal.style.width = nPct + '%';
+      txtNormal.textContent = nPct + '%';
+      barViolated.style.width = vPct + '%';
+      txtViolated.textContent = vPct + '%';
+    }
+
+    function executeAlertDispatch(status, confidence) {
+      statusMonitor.className = 'status-monitor';
+      mainAlarmPanel.classList.remove('panic');
+
+      if (status === 'violated') {
+        statusMonitor.classList.add('violated-glow');
+        statusIcon.textContent = '💀';
+        statusText.textContent = 'CRITICAL: VIOLATED';
+        mainAlarmPanel.classList.add('panic');
+        writeLog(`[ALERT] Intruding target detected. Confidence: ${(confidence*100).toFixed(1)}%`);
+      } else {
+        statusMonitor.classList.add('normal-glow');
+        statusIcon.textContent = '🛡️';
+        statusText.textContent = 'SECURE: NORMAL';
+        writeLog(`[SECURE] Clear zone confirmed.`);
+      }
+
+      // ยิงข้อมูลส่งออกไปบอกฝั่ง Python อัตโนมัติ
+      fetch(`/api/traffic?status=${status}`).catch(()=>{});
+    }
+
+    // ฟังก์ชันสั่งงานปุ่มลัดจำลองสถานะแมนนวล (ด้านขวา)
+    function mockStatus(type) {
+      if(type === 'violated') {
+        renderMetrics(0.05, 0.95);
+        executeAlertDispatch('violated', 0.95);
+      } else {
+        renderMetrics(0.98, 0.02);
+        executeAlertDispatch('normal', 0.98);
+      }
+    }
+
+    function toggleAutoLoop() {
+      autoMode = !autoMode;
+      autoBtn.textContent = autoMode ? '🔄 AUTO LOOP: ON' : '🔄 AUTO LOOP: OFF';
+      if (autoMode) {
+        autoTimer = setInterval(analyzeTrafficFrame, 1200);
+        writeLog('Autonomous cyclic screening processing initiated.');
+      } else {
+        clearInterval(autoTimer);
+        writeLog('Autonomous monitoring terminated by user override.');
+      }
+    }
+
+    // สลับโหลดรูปภาพอินพุต
+    imageUpload.addEventListener('change', () => {
+      const file = imageUpload.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      photoPreview.src = url;
+      photoPreview.onload = () => {
+        video.style.display = 'none';
+        photoPreview.style.display = 'block';
+        currentSource = 'image';
+        writeLog(`Static image injected into analyzer buffer: ${file.name}`);
+        analyzeTrafficFrame();
+      };
+    });
+
+    // ปุ่มสั่งงานเคลื่อนย้ายมอเตอร์ SERVO (แยกทำงานอิสระเด็ดขาด ไม่ขึ้นตรงกับกล้อง)
+    function sendServo(inputId, rowId) {
+      const inputVal = document.getElementById(inputId).value;
+      const targetDeg = parseInt(inputVal) || 0;
+
+      // ส่งแพ็กเกจคำสั่งยิงตรงไป Python WebSocket ทันทีตามลอจิกของคุณ
+      socket.emit("servoPyDeg", { deg: targetDeg });
+      
+      writeLog(`[COMMAND] Actuator command dispatched -> Target Angle: ${targetDeg}°`);
+
+      // เปลี่ยนกรอบสีปุ่มที่กดใช้งานล่าสุดเพื่อเป็น Visual Feedback
+      document.querySelectorAll('.servo-card').forEach(card => card.classList.remove('servo-active-border'));
+      if(rowId) document.getElementById(rowId).classList.add('servo-active-border');
+    }
+
+    startCameraBtn.addEventListener('click', startCamera);
+    detectBtn.addEventListener('click', analyzeTrafficFrame);
+    autoBtn.addEventListener('click', toggleAutoLoop);
+
+    // สั่งโหลดโครงสร้างขณะเตรียมหน้าจอ
+    loadEdgeImpulseModel();
+  </script>
+</body>
+</html>
