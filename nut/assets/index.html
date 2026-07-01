@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Rail Crossing Command Center - ระบบควบคุมรางกั้นรถไฟอัจฉริยะ</title>
+
+    <!-- ฟอนต์ Orbitron (หัวข้อ/ตัวเลขแนวเทคโนโลยี) + Kanit (ภาษาไทยอ่านง่าย) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- ไอคอน FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --bg: #040711;
+            --panel: rgba(13, 20, 38, 0.75);
+            --panel-solid: #0c1526;
+            --border: #1e2b4a;
+            --cyan: #00e5ff;
+            --green: #2bff9e;
+            --red: #ff3860;
+            --amber: #ffb020;
+            --text: #e7edf7;
+            --muted: #7686a8;
+        }
+
+        * { box-sizing: border-box; }
+
+        body, html {
+            margin: 0;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 15% 0%, rgba(0, 229, 255, 0.10), transparent 45%),
+                radial-gradient(circle at 100% 10%, rgba(255, 56, 96, 0.08), transparent 40%),
+                linear-gradient(180deg, #040711 0%, #050a17 100%);
+            background-attachment: fixed;
+            position: relative;
+            overflow-x: hidden;
+            padding-bottom: 40px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.04) 1px, transparent 1px);
+            background-size: 34px 34px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .wrap { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+        .font-tech { font-family: 'Orbitron', sans-serif; }
+
+        /* ===== Header ===== */
+        .topbar {
+            margin-top: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 14px; }
+
+        #school-logo {
+            width: 52px; height: 52px; border-radius: 50%;
+            object-fit: contain; background: #fff;
+            border: 2px solid var(--cyan);
+            box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+        }
+
+        .topbar-divider { width: 1px; height: 34px; background: var(--border); }
+
+        .topbar-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--cyan); text-transform: uppercase; }
+        .topbar-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .live-pill {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 14px; border-radius: 999px;
+            background: rgba(43, 255, 158, 0.08);
+            border: 1px solid rgba(43, 255, 158, 0.35);
+            color: var(--green); font-size: 12px; font-weight: 600;
+        }
+        .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.4s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        #depa-logo { width: 44px; height: 44px; object-fit: contain; padding: 4px; border-radius: 12px; background: #fff; }
+
+        /* ===== Hero ===== */
+        .hero { text-align: center; padding: 34px 10px 8px; }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 16px; border-radius: 999px;
+            background: rgba(0, 229, 255, 0.08);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            color: var(--cyan); font-size: 12px; font-weight: 600; letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        .hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: clamp(22px, 4vw, 34px);
+            margin: 0;
+            letter-spacing: 1px;
+            text-shadow: 0 0 22px rgba(0, 229, 255, 0.25);
+        }
+        .hero h1 span { color: var(--cyan); }
+        .hero p { max-width: 640px; margin: 14px auto 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+        .hero p strong { color: var(--red); }
+
+        /* ===== Main grid ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: 1.55fr 1fr;
+            gap: 22px;
+            margin-top: 30px;
+        }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 18px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+
+        .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .panel-head-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; }
+        .panel-head-title i { color: var(--cyan); }
+        .panel-head-meta { font-size: 11px; color: var(--muted); }
+
+        .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); animation: pulse 1s infinite; }
+
+        /* ===== Camera console ===== */
+        .cam-frame {
+            position: relative;
+            background: #000;
+            border-radius: 16px;
+            min-height: 320px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            border: 1px solid #101a30;
+        }
+        .cam-frame canvas, .cam-frame video { border-radius: 16px; }
+
+        .cam-corner { position: absolute; width: 22px; height: 22px; border: 2px solid var(--cyan); opacity: 0.85; }
+        .cam-corner.tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+        .cam-corner.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+        .cam-corner.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+        .cam-corner.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+
+        .cam-scanline {
+            position: absolute; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            box-shadow: 0 0 10px var(--cyan);
+            animation: scan 3.2s linear infinite;
+            opacity: 0.7;
+        }
+        @keyframes scan { 0% { top: 4%; } 100% { top: 94%; } }
+
+        .cam-loading { text-align: center; color: var(--muted); }
+        .cam-loading i { font-size: 30px; color: var(--cyan); margin-bottom: 8px; }
+
+        #photo-preview { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; display: none; }
+
+        .cam-controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+        .action-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-family: 'Kanit', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .action-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+        .action-btn.is-live { border-color: var(--green); color: var(--green); }
+        .test-mode-badge {
+            font-size: 11px; color: var(--amber);
+            border: 1px solid rgba(255, 176, 32, 0.4);
+            background: rgba(255, 176, 32, 0.08);
+            padding: 6px 12px; border-radius: 999px;
+            display: none; align-items: center; gap: 6px;
+        }
+
+        .hud-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+        .hud-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 10px; text-align: center; }
+        .hud-card span { display: block; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+        .hud-card strong { font-family: 'Orbitron', sans-serif; font-size: 14px; color: var(--text); }
+        .hud-card.ok strong { color: var(--green); }
+
+        /* ===== AI analysis bars ===== */
+        #label-container { display: flex; flex-direction: column; gap: 14px; }
+        .ai-row { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+        .ai-row-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+        .ai-score { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 13px; }
+        .score-danger { color: var(--red); }
+        .score-safe { color: var(--green); }
+        .bar-track { width: 100%; height: 10px; background: #0a1120; border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+        .bar-fill { height: 100%; width: 0%; border-radius: 999px; transition: width 0.2s ease-out; }
+        .bar-danger { background: linear-gradient(90deg, #ff3860, #ff7a90); box-shadow: 0 0 10px rgba(255, 56, 96, 0.6); }
+        .bar-safe { background: linear-gradient(90deg, #2bff9e, #7dffce); box-shadow: 0 0 10px rgba(43, 255, 158, 0.6); }
+
+        /* ===== Alert status card ===== */
+        .status-card {
+            margin-top: 16px;
+            border-radius: 18px;
+            padding: 16px;
+            display: flex; align-items: flex-start; gap: 14px;
+            border: 1px solid var(--border);
+            background: rgba(43, 255, 158, 0.06);
+            transition: all 0.3s ease;
+        }
+        .status-card.is-danger { background: rgba(255, 56, 96, 0.08); border-color: rgba(255, 56, 96, 0.5); animation: alertPulse 1.1s infinite; }
+        @keyframes alertPulse { 0%,100% { box-shadow: 0 0 0 rgba(255,56,96,0); } 50% { box-shadow: 0 0 26px rgba(255,56,96,0.35); } }
+
+        .status-icon-box { width: 48px; height: 48px; min-width: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: var(--green); color: #04140c; }
+        .status-icon-box.is-danger { background: var(--red); color: #2b000a; }
+
+        .status-title { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 14px; color: var(--green); margin: 0; letter-spacing: 0.5px; }
+        .status-title.is-danger { color: var(--red); }
+        .status-desc { font-size: 12px; color: var(--muted); margin: 4px 0 0; line-height: 1.6; }
+
+        footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 34px; }
+
+        /* ===== Manual servo override ===== */
+        .servo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 4px; }
+        @media (max-width: 900px) { .servo-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .servo-grid { grid-template-columns: 1fr; } }
+
+        .servo-card {
+            display: flex; flex-direction: column;
+            background: #05070f;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+        .servo-card.is-active { border-color: var(--green); box-shadow: 0 0 14px rgba(43, 255, 158, 0.3); }
+
+        .servo-label {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            padding: 8px 6px 0;
+            letter-spacing: 0.3px;
+        }
+
+        .servo-input {
+            width: 100%;
+            background: #000;
+            border: none;
+            border-bottom: 1px dashed var(--border);
+            color: var(--cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            padding: 10px 4px 8px;
+            outline: none;
+        }
+
+        .servo-btn {
+            background: transparent;
+            color: var(--text);
+            border: none;
+            padding: 10px 8px;
+            font-family: 'Kanit', sans-serif;
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .servo-btn:hover { background: var(--cyan); color: #00131a; }
+        .servo-btn:active { transform: scale(0.97); }
+        .servo-card.is-active .servo-btn { background: var(--green); color: #04140c; }
+    </style>
+</head>
+<body>
+
+    <div class="wrap">
+
+        <!-- ===== Header ===== -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <img id="school-logo" src="https://www.stss.ac.th/img/stss_logo.png" alt="School Logo" />
+                <div class="topbar-divider"></div>
+                <div>
+                    <div class="topbar-title">STSS Project · Rail Safety AI</div>
+                    <div class="topbar-sub">เทคโนโลยีปัญญาประดิษฐ์เพื่อความปลอดภัยทางข้ามรถไฟ</div>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="live-pill"><span class="live-dot"></span> SYSTEM ONLINE</div>
+                <img id="depa-logo" src="https://www.depa.or.th/storage/app/media/LogoDEPA-01.png" alt="Depa Logo" />
+            </div>
+        </div>
+
+        <!-- ===== Hero ===== -->
+        <div class="hero">
+            <div class="hero-badge"><i class="fas fa-satellite-dish"></i> AI & IOT RAIL CROSSING SAFETY SYSTEM</div>
+            <h1 class="font-tech">RAIL CROSSING <span>COMMAND CENTER</span></h1>
+            <p>
+                ระบบปัญญาประดิษฐ์เฝ้าระวังจุดตัดทางรถไฟแบบ Real-time ตรวจจับ<strong>รถไฟที่กำลังแล่นเข้ามา</strong>
+                ผ่านกล้อง เพื่อสั่งเปิด-ปิดแขนกั้นอัตโนมัติ เพื่อความปลอดภัยของผู้ใช้ทาง
+            </p>
+        </div>
+
+        <!-- ===== Main grid ===== -->
+        <div class="grid">
+
+            <!-- กล้องตรวจจับ -->
+            <div class="panel">
+                <div class="panel-head">
+                    <div class="panel-head-title"><span class="rec-dot"></span> <i class="fas fa-video"></i> กล้องตรวจจับจุดตัดทางรถไฟ</div>
+                    <div class="panel-head-meta">ความละเอียด 300x300 px</div>
+                </div>
+
+                <div class="cam-frame" id="cam-frame">
+                    <div class="cam-corner tl"></div>
+                    <div class="cam-corner tr"></div>
+                    <div class="cam-corner bl"></div>
+                    <div class="cam-corner br"></div>
+                    <div class="cam-scanline"></div>
+                    <div id="webcam-container" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
+                        <div class="cam-loading">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <p>กำลังเชื่อมต่อกล้องและโมเดล AI...</p>
+                        </div>
+                    </div>
+                    <img id="photo-preview" alt="ภาพที่แนบเพื่อทดสอบโมเดล" />
+                </div>
+
+                <div class="cam-controls">
+                    <label for="imageUpload" class="action-btn" style="cursor:pointer;">
+                        <i class="fas fa-image"></i> แนบภาพเพื่อทดสอบโมเดล
+                    </label>
+                    <input id="imageUpload" type="file" accept="image/*" style="display:none;">
+                    <button id="resumeLiveBtn" class="action-btn is-live" style="display:none;" onclick="resumeLiveCamera()">
+                        <i class="fas fa-video"></i> กลับสู่กล้องสด
+                    </button>
+                    <span id="test-mode-badge" class="test-mode-badge"><i class="fas fa-flask"></i> โหมดทดสอบด้วยภาพนิ่ง</span>
+                </div>
+
+                <div class="hud-strip">
+                    <div class="hud-card">
+                        <span>หน่วงเวลาตรวจสอบ</span>
+                        <strong id="delay-display">3 วินาที</strong>
+                    </div>
+                    <div class="hud-card">
+                        <span>ความแม่นยำส่งคำสั่ง</span>
+                        <strong>&gt; 75%</strong>
+                    </div>
+                    <div class="hud-card ok">
+                        <span>ระบบสั่งการแขนกั้น</span>
+                        <strong><i class="fas fa-circle-check"></i> ACTIVE</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ผลวิเคราะห์และแจ้งเตือน -->
+            <div style="display:flex; flex-direction:column;">
+                <div class="panel" style="flex:1;">
+                    <div class="panel-head">
+                        <div class="panel-head-title"><i class="fas fa-brain"></i> การวิเคราะห์จาก AI</div>
+                    </div>
+                    <div id="label-container"></div>
+
+                    <!-- แจ้งเตือนสถานะ -->
+                    <div id="status-card" class="status-card">
+                        <div id="status-icon-box" class="status-icon-box">
+                            <i id="status-icon" class="fas fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <h3 id="status-title" class="status-title">ไม่พบรถไฟ</h3>
+                            <p id="status-desc" class="status-desc">ไม่มีรถไฟกำลังเข้าใกล้จุดตัดในขณะนี้ แขนกั้นเปิดตามปกติ</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ควบคุมแขนกั้นด้วยมือ -->
+        <div class="panel" style="margin-top: 22px;">
+            <div class="panel-head">
+                <div class="panel-head-title"><i class="fas fa-sliders"></i> ควบคุมแขนกั้นด้วยมือ (Manual Override)</div>
+                <div class="panel-head-meta">แยกอิสระจากระบบ AI — กดสั่งองศาได้ทันที</div>
+            </div>
+            <div class="servo-grid">
+                <div class="servo-card" id="row1">
+                    <div class="servo-label">0° · ปิดถนน</div>
+                    <input type="number" class="servo-input" id="deg1" value="0" min="0" max="180">
+                    <button class="servo-btn" onclick="sendServo('deg1', 'row1')"><i class="fas fa-bolt"></i> สั่ง 0°</button>
+                </div>
+                <div class="servo-card" id="row2">
+                    <div class="servo-label">10° · ติดตั้งราง</div>
+                    <input type="number" class="servo-input" id="deg2" value="10" min="0" max="180">
+                    <button class="servo-btn" onclick="sendServo('deg2', 'row2')"><i class="fas fa-bolt"></i> สั่ง 10°</button>
+                </div>
+                <div class="servo-card" id="row3">
+                    <div class="servo-label">45° · หยุดรางเลื่อน</div>
+                    <input type="number" class="servo-input" id="deg3" value="45" min="0" max="180">
+                    <button class="servo-btn" onclick="sendServo('deg3', 'row3')"><i class="fas fa-bolt"></i> สั่ง 45°</button>
+                </div>
+                <div class="servo-card" id="row4">
+                    <div class="servo-label">90° · เปิดถนน</div>
+                    <input type="number" class="servo-input" id="deg4" value="90" min="0" max="180">
+                    <button class="servo-btn" onclick="sendServo('deg4', 'row4')"><i class="fas fa-bolt"></i> สั่ง 90°</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            &copy; 2026 AI Rail Crossing Command Center — โครงการนวัตกรรมระบบกั้นรถไฟอัจฉริยะ โรงเรียน STSS
+        </footer>
+    </div>
+
+    <!-- โหลดไลบรารี TensorFlow และ Teachable Machine -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script src="libs/socket.io.min.js"></script>
+    <script type="text/javascript">
+
+        const socket = io();
+
+        const logo = "https://www.stss.ac.th/img/stss_logo.png";
+        const URL = "https://teachablemachine.withgoogle.com/models/4HNPR85Pn/";
+
+        const sec = 3;
+        let model, webcam, labelContainer, maxPredictions;
+        let lastSend = 0;
+        let currentMode = 'live'; // 'live' = ใช้กล้องสด, 'image' = ทดสอบด้วยภาพที่แนบ
+
+
+        document.getElementById('delay-display').innerText = sec + " วินาที";
+        document.getElementById('school-logo').src = logo;
+
+        window.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            const flip = true;
+            webcam = new tmImage.Webcam(300, 300, flip);
+            await webcam.setup();
+            await webcam.play();
+
+            window.requestAnimationFrame(loop);
+
+            document.getElementById("webcam-container").innerHTML = "";
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = "";
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const wrapper = document.createElement("div");
+                wrapper.className = "ai-row";
+
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "ai-row-head";
+
+                const titleSpan = document.createElement("span");
+                titleSpan.innerText = i === 0 ? "🚂 ตรวจพบรถไฟกำลังมา (Train Approaching)" : "✅ ไม่พบรถไฟ (No Train)";
+
+                const scoreSpan = document.createElement("span");
+                scoreSpan.id = `score-${i}`;
+                scoreSpan.className = "ai-score " + (i === 0 ? "score-danger" : "score-safe");
+                scoreSpan.innerText = "0%";
+
+                infoDiv.appendChild(titleSpan);
+                infoDiv.appendChild(scoreSpan);
+
+                const barOuter = document.createElement("div");
+                barOuter.className = "bar-track";
+
+                const barInner = document.createElement("div");
+                barInner.id = `bar-${i}`;
+                barInner.className = "bar-fill " + (i === 0 ? "bar-danger" : "bar-safe");
+                barInner.style.width = "0%";
+
+                barOuter.appendChild(barInner);
+                wrapper.appendChild(infoDiv);
+                wrapper.appendChild(barOuter);
+                labelContainer.appendChild(wrapper);
+            }
+        }
+
+        async function loop() {
+            if (currentMode === 'live') {
+                webcam.update();
+                await predict(webcam.canvas);
+            }
+            window.requestAnimationFrame(loop);
+        }
+
+        async function predict(source) {
+            const prediction = await model.predict(source);
+
+            for (let i = 0; i < maxPredictions; i++) {
+                const prob = prediction[i].probability;
+                const percentage = (prob * 100).toFixed(0) + "%"; // แปลงค่าเป็นเปอร์เซ็นต์ (เช่น 73%)
+
+                // 1. อัปเดตตัวเลขแสดงผลข้างบนแถบให้เป็นรูปแบบคลาสบวกด้วย % เช่น (Class 2: 73%)
+                document.getElementById(`score-${i}`).innerText = prediction[i].className + ": " + percentage;
+
+                // 2. ขยายสไตล์ความกว้างของแถบสีตามเปอร์เซ็นต์จริง
+                document.getElementById(`bar-${i}`).style.width = percentage;
+            }
+
+            // จัดการเงื่อนไขแจ้งเตือนภัย
+            const statusCard = document.getElementById('status-card');
+            const statusIconBox = document.getElementById('status-icon-box');
+            const statusIcon = document.getElementById('status-icon');
+            const statusTitle = document.getElementById('status-title');
+            const statusDesc = document.getElementById('status-desc');
+
+            if (prediction[0].probability > 0.75) {
+                statusCard.className = "status-card is-danger";
+                statusIconBox.className = "status-icon-box is-danger";
+                statusIcon.className = "fas fa-train";
+                statusTitle.className = "status-title is-danger";
+                statusTitle.innerText = "แจ้งเตือน! ตรวจพบรถไฟกำลังมา";
+                statusDesc.innerText = "ระบบ AI ตรวจพบรถไฟกำลังแล่นเข้าใกล้จุดตัด กำลังสั่งปิดแขนกั้นอัตโนมัติ!";
+                sendServoCommand(0); // 0° = ปิดถนน
+
+            } else if (prediction[1].probability > 0.75) {
+                statusCard.className = "status-card";
+                statusIconBox.className = "status-icon-box";
+                statusIcon.className = "fas fa-shield-halved";
+                statusTitle.className = "status-title";
+                statusTitle.innerText = "ไม่พบรถไฟ";
+                statusDesc.innerText = "ไม่มีรถไฟกำลังเข้าใกล้ ระบบเปิดแขนกั้นให้รถผ่านได้ตามปกติ";
+                sendServoCommand(90); // 90° = เปิดถนน
+            }
+        }
+
+        // ส่งคำสั่งหมุนเซอร์โวแขนกั้นทางรถไฟไปยัง main.py (servoPyDeg -> Bridge.call("servo", deg) -> sketh.ino)
+        function sendServoCommand(deg) {
+            const now = Date.now();
+            const COOLDOWN_MS = sec * 1000; // ใช้ค่า sec (3 วินาที) ที่ประกาศไว้ด้านบน
+
+            // ถ้าเวลาปัจจุบัน หักลบกับ เวลาที่ส่งไปล่าสุด แล้วยังไม่เกิน 3 วินาที ให้ข้ามไป (ไม่ส่งซ้ำ)
+            if (now - lastSend < COOLDOWN_MS) {
+                return;
+            }
+
+            console.log("Sending servo command to Python:", deg);
+            socket.emit("servoPyDeg", { deg: deg });
+
+            // อัปเดตเวลาที่ส่งล่าสุด
+            lastSend = now;
+        }
+
+        // ปุ่มควบคุมแขนกั้นด้วยมือ (ทำงานอิสระ ไม่ผูกกับ AI/cooldown) ส่งตรงไป main.py -> servoPyDeg
+        function sendServo(inputId, rowId) {
+            const targetDeg = parseInt(document.getElementById(inputId).value) || 0;
+            socket.emit("servoPyDeg", { deg: targetDeg });
+            console.log("Manual servo command dispatched -> deg:", targetDeg);
+
+            document.querySelectorAll('.servo-card').forEach(card => card.classList.remove('is-active'));
+            if (rowId) document.getElementById(rowId).classList.add('is-active');
+        }
+
+        // แนบภาพนิ่งเพื่อทดสอบโมเดล AI โดยไม่ต้องใช้กล้องสด
+        const imageUpload = document.getElementById('imageUpload');
+        const photoPreview = document.getElementById('photo-preview');
+        const resumeLiveBtn = document.getElementById('resumeLiveBtn');
+        const testModeBadge = document.getElementById('test-mode-badge');
+
+        imageUpload.addEventListener('change', () => {
+            const file = imageUpload.files[0];
+            if (!file) return;
+
+            // ใช้ window.URL เพราะตัวแปร URL ด้านบนถูกใช้เก็บลิงก์โมเดลไปแล้ว
+            const objectUrl = window.URL.createObjectURL(file);
+            photoPreview.onload = async () => {
+                currentMode = 'image';
+                document.getElementById('webcam-container').style.display = 'none';
+                photoPreview.style.display = 'block';
+                resumeLiveBtn.style.display = 'inline-flex';
+                testModeBadge.style.display = 'inline-flex';
+
+                await predict(photoPreview);
+            };
+            photoPreview.src = objectUrl;
+        });
+
+        function resumeLiveCamera() {
+            currentMode = 'live';
+            photoPreview.style.display = 'none';
+            document.getElementById('webcam-container').style.display = 'flex';
+            resumeLiveBtn.style.display = 'none';
+            testModeBadge.style.display = 'none';
+            imageUpload.value = '';
+        }
+    </script>
+</body>
+</html>
